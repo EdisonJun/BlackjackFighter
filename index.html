@@ -7,17 +7,18 @@
     <link rel="shortcut icon" href="TemplateData/favicon.ico" />
     <link rel="stylesheet" href="TemplateData/style.css" />
 
-    <!-- Responsive canvas + avoid cropping -->
     <style>
       html, body {
         width: 100%;
         height: 100%;
         margin: 0;
         padding: 0;
+        background: #000;
+        overflow: hidden;
       }
 
-      /* Make the container fill the page */
-      #unity-container {
+      /* 整个页面居中 */
+      #page {
         width: 100%;
         height: 100%;
         display: flex;
@@ -25,41 +26,57 @@
         justify-content: center;
       }
 
-      /* Canvas scales with the container */
+      /* 这个盒子尺寸固定为设计分辨率 */
+      #unity-fixed {
+        width: 960px;
+        height: 600px;
+        transform-origin: center center;
+      }
+
+      /* 让 canvas 严格等于设计分辨率 */
       #unity-canvas {
-        width: 100%;
-        height: 100%;
+        width: 960px;
+        height: 600px;
         display: block;
         background: #000;
       }
 
-      /* Optional: if some template css hides overflow and causes cropping, override it */
-      body { overflow: hidden; }
+      /* 保持你原来的 loading 和 footer 结构 */
+      #unity-container {
+        width: 960px;
+        height: 600px;
+        position: relative;
+      }
     </style>
   </head>
 
   <body>
-    <div id="unity-container" class="unity-desktop">
-      <canvas id="unity-canvas" tabindex="-1"></canvas>
+    <div id="page">
+      <div id="unity-fixed">
+        <div id="unity-container" class="unity-desktop">
+          <canvas id="unity-canvas" width="960" height="600" tabindex="-1"></canvas>
 
-      <div id="unity-loading-bar">
-        <div id="unity-logo"></div>
-        <div id="unity-progress-bar-empty">
-          <div id="unity-progress-bar-full"></div>
+          <div id="unity-loading-bar">
+            <div id="unity-logo"></div>
+            <div id="unity-progress-bar-empty">
+              <div id="unity-progress-bar-full"></div>
+            </div>
+          </div>
+
+          <div id="unity-warning"></div>
+
+          <div id="unity-footer">
+            <div id="unity-logo-title-footer"></div>
+            <div id="unity-fullscreen-button"></div>
+            <div id="unity-build-title">Gameproject</div>
+          </div>
         </div>
-      </div>
-
-      <div id="unity-warning"></div>
-
-      <div id="unity-footer">
-        <div id="unity-logo-title-footer"></div>
-        <div id="unity-fullscreen-button"></div>
-        <div id="unity-build-title">Gameproject</div>
       </div>
     </div>
 
     <script>
       const canvas = document.querySelector("#unity-canvas");
+      const fixed = document.querySelector("#unity-fixed");
 
       function unityShowBanner(msg, type) {
         const warningBanner = document.querySelector("#unity-warning");
@@ -91,56 +108,43 @@
         companyName: "DefaultCompany",
         productName: "Gameproject",
         productVersion: "1.0",
-        showBanner: unityShowBanner
+        showBanner: unityShowBanner,
       };
 
-      // Make Unity match the WebGL render target to the canvas DOM size.
-      // Keep it default (true) for most cases.
-      // config.matchWebGLToCanvasSize = true;
+      function applyScale() {
+        const baseW = 960;
+        const baseH = 600;
 
-      // Mobile handling
-      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-        const meta = document.createElement("meta");
-        meta.name = "viewport";
-        meta.content =
-          "width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes";
-        document.getElementsByTagName("head")[0].appendChild(meta);
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
 
-        document.querySelector("#unity-container").className = "unity-mobile";
-        canvas.className = "unity-mobile";
+        const scale = Math.min(vw / baseW, vh / baseH);
 
-        // Optional: lower resolution for performance
-        // config.devicePixelRatio = 1;
+        fixed.style.transform = "scale(" + scale + ")";
       }
 
-      // Ensure canvas always matches container size (helps some browsers/layouts)
-      function resizeCanvasToDisplaySize() {
-        // Only set drawing buffer size if you ever set matchWebGLToCanvasSize=false.
-        // With default behavior, Unity syncs render target automatically.
-        // Left here as a safe hook if you later customize.
-      }
-      window.addEventListener("resize", resizeCanvasToDisplaySize);
+      window.addEventListener("resize", applyScale);
+      applyScale();
 
       document.querySelector("#unity-loading-bar").style.display = "block";
 
       const script = document.createElement("script");
       script.src = loaderUrl;
-
       script.onload = () => {
         createUnityInstance(canvas, config, (progress) => {
-          document.querySelector("#unity-progress-bar-full").style.width = (100 * progress) + "%";
+          document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
         })
           .then((unityInstance) => {
             document.querySelector("#unity-loading-bar").style.display = "none";
             document.querySelector("#unity-fullscreen-button").onclick = () => {
               unityInstance.SetFullscreen(1);
+              setTimeout(applyScale, 50);
             };
           })
           .catch((message) => {
             alert(message);
           });
       };
-
       document.body.appendChild(script);
     </script>
   </body>
